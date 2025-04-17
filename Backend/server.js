@@ -16,10 +16,6 @@ app.use(express.urlencoded({ extended: true }))
 const authRoutes = require('./Routes/auth.routes');
 app.use('/auth', authRoutes);
 
-
-app.get('/', (req, res) => {
-    res.send('Hello World!')
-})
 app.listen(4000, () => {
     console.log('Server is running on port 4000')
 })
