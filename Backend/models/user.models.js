@@ -14,13 +14,5 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    isAdmin: {
-        type: Boolean,
-        default: false
-    },
-    profilePic: {
-        type: String,
-        default: ""
-    }
 }, { timestamps: true });
 module.exports = mongoose.model('User', userSchema);
