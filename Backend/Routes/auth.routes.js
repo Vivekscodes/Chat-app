@@ -4,12 +4,6 @@ const User = require("../models/user.models");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-// Test route
-router.get("/test", (req, res) => {
-    res.json({ message: "Auth route working fine" });
-});
-
-
 // User registration
 router.post('/signup', async (req, res) => {
     console.log("working fine")
