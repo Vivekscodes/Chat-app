@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
+import ChatInterface from './ChatInterface';
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -63,6 +63,7 @@ const Login = () => {
       console.log('Error connecting to server');
       console.error(err);
     }
+
   }
 
   return (
