@@ -3,17 +3,22 @@ const router = express.Router();
 const User = require("../models/user.models");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const validator = require('validator');
+const dotenv = require('dotenv');
 
 // User registration
 router.post('/signup', async (req, res) => {
-    console.log("working fine")
+    // console.log("working fine")
     try {
         const { name, email, password } = req.body;
-        console.log(req.body)
+        // Do not log req.body or sensitive data
 
         // Validate input
         if (!name || !email || !password) {
             return res.status(400).json({ error: "All fields are required" });
+        }
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ error: "Invalid email format" });
         }
 
         // Check if user already exists
@@ -34,9 +39,12 @@ router.post('/signup', async (req, res) => {
         });
 
         // Create JWT token
+        if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET environment variable must be set');
+        }
         const token = jwt.sign(
             { userId: newUser._id },
-            process.env.JWT_SECRET || 'your_jwt_secret',
+            process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
@@ -45,7 +53,7 @@ router.post('/signup', async (req, res) => {
             token,
             user: {
                 id: newUser._id,
-                username: newUser.username,
+                name: newUser.name,
                 email: newUser.email
             }
         });
@@ -68,20 +76,19 @@ router.post("/login", async (req, res) => {
 
         // Find user
         const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ error: "Invalid credentials" });
-        }
 
-        // Check password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
+        // Check user existence and password in one block
+        if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(400).json({ error: "Invalid credentials" });
         }
 
         // Create JWT token
+        if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET environment variable must be set');
+        }
         const token = jwt.sign(
             { userId: user._id },
-            process.env.JWT_SECRET || 'your_jwt_secret',
+            process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
@@ -90,7 +97,7 @@ router.post("/login", async (req, res) => {
             token,
             user: {
                 id: user._id,
-                username: user.username,
+                name: user.name,
                 email: user.email
             }
         });
