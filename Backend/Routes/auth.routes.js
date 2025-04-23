@@ -53,10 +53,10 @@ router.post('/signup', async (req, res) => {
         console.error("Registration error:", error);
         res.status(500).json({ error: "Server error during registration" });
     }
-
+    // localStorage.setItem('token', token);
 });
 
-// User login
+// User login/
 router.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
