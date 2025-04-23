@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ChatInterface from './ChatInterface';
+import ProtectedRoute from './ProtectedRoute';
+import { Navigate } from 'react-router-dom';
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -47,8 +49,9 @@ const Login = () => {
         body: JSON.stringify(formData)
       })
       const data = await res.json();
-      if (res.status == 200) {
+      if (res.status == 200 || res.status == 201) {
         localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/chat');
       }
       else {

@@ -1,7 +1,9 @@
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import PropTypes from 'prop-types';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
 
 // Utility for avatar color based on username
 function stringToColor(str) {
@@ -37,15 +39,45 @@ function ChatUI({
   handleKeyPress
 }) {
   const messagesEndRef = useRef(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [selectedUser, setSelectedUser] = useState('All'); // 'All' for group chat
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or selected user changes
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [chat]);
+  }, [chat, selectedUser]);
+  
+  // Insert emoji at cursor position
+  const addEmoji = (emoji) => {
+    setMessage((prev) => prev + emoji.native);
+    setShowEmojiPicker(false);
+  };
+
+  // Filter messages for current chat context
+  const filteredChat = chat.filter((m) => {
+    if (selectedUser === 'All') {
+      // Group chat: recipient is 'All' or undefined
+      return !m.recipient || m.recipient === 'All';
+    } else {
+      // Private chat: (me <-> selectedUser)
+      return (
+        (m.sender === username && m.recipient === selectedUser) ||
+        (m.sender === selectedUser && m.recipient === username)
+      );
+    }
+  });
+
+  // Modified sendMessage to include recipient
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    sendMessage(message, selectedUser); // Pass recipient
+    setMessage('');
+  };
 
   return (
     <div className="relative flex flex-col h-full min-h-screen w-full overflow-hidden">
@@ -65,7 +97,7 @@ function ChatUI({
               </svg>
             </div>
             <h2 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 tracking-wide drop-shadow-lg">
-              Qodo Chat Room
+              Chat Wave
             </h2>
             <div className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold shadow ${isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
               {isConnected ? 'Connected' : 'Disconnected'}
@@ -85,36 +117,56 @@ function ChatUI({
               <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" /></svg>
               Online Users
             </h3>
+            <span className="ml-2 text-green-400 font-bold">({onlineUsers.length})</span>
             <ul className="space-y-3">
+              {/* Group chat option */}
+              <li
+                className={`flex items-center gap-3 cursor-pointer p-2 ${selectedUser === 'All' ? 'bg-blue-800 bg-opacity-30 rounded' : ''}`}
+                onClick={() => setSelectedUser('All')}
+              >
+                <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow bg-gradient-to-tr from-blue-500 via-purple-500 to-pink-500">
+                  GC
+                </div>
+                <span className="text-gray-200 font-bold">Group Chat</span>
+              </li>
+              {/* Private chat users */}
               {onlineUsers.length > 0 ? (
-                onlineUsers.map((user, index) => (
-                  <li key={index} className="flex items-center gap-3">
+                onlineUsers.filter(u => u !== username).map((user, index) => (
+                  <li
+                    key={index}
+                    className={`flex items-center gap-3 cursor-pointer p-2 ${selectedUser === user ? 'bg-blue-800 bg-opacity-30 rounded' : ''}`}
+                    onClick={() => setSelectedUser(user)}
+                  >
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow"
-                      style={{
-                        background: user === username
-                          ? 'linear-gradient(135deg, #3b82f6 0%, #a78bfa 100%)'
-                          : stringToColor(user)
-                      }}
+                      style={{ background: stringToColor(user) }}
                     >
                       {getInitials(user)}
                     </div>
-                    <span className={`text-gray-200 ${user === username ? 'font-bold text-blue-400' : ''}`}>
-                      {user === username ? 'You' : user}
-                    </span>
+                    <span className="text-gray-200">{user}</span>
                   </li>
                 ))
               ) : (
                 <li className="text-gray-500">No users online</li>
               )}
+              {/* You (current user) */}
+              <li className="flex items-center gap-3 mt-4">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow"
+                  style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #a78bfa 100%)' }}
+                >
+                  {getInitials(username)}
+                </div>
+                <span className="font-bold text-blue-400">You</span>
+              </li>
             </ul>
           </div>
 
           {/* Messages Area */}
           <div className="flex-1 flex flex-col bg-transparent">
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {chat.length > 0 ? (
-                chat.map((m, i) => (
+              {filteredChat.length > 0 ? (
+                filteredChat.map((m, i) => (
                   <div
                     key={i}
                     className={`flex items-end gap-2 ${m.sender === username ? 'justify-end' : 'justify-start'} animate-fade-in`}
@@ -138,8 +190,12 @@ function ChatUI({
                         : 'bg-gray-800 bg-opacity-80 text-gray-200 rounded-bl-none'
                         }`}
                     >
-                      <div className="font-bold text-xs mb-1">
+                      <div className="font-bold text-xs mb-1 flex items-center gap-2">
                         {m.sender === username ? 'You' : m.sender}
+                        {/* Private badge */}
+                        {selectedUser !== 'All' && (
+                          <span className="text-pink-400 text-[10px] font-semibold px-2 py-0.5 rounded bg-pink-900 bg-opacity-30 ml-1">Private</span>
+                        )}
                       </div>
                       <div className="break-words">{m.message}</div>
                       <div className="text-xs opacity-70 text-right mt-1">
@@ -169,8 +225,8 @@ function ChatUI({
             </div>
 
             {/* Message Input */}
-            <form onSubmit={sendMessage} className="p-4 border-t border-blue-800 bg-gray-900 bg-opacity-80">
-              <div className="flex rounded-xl overflow-hidden shadow-lg">
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-blue-800 bg-gray-900 bg-opacity-80">
+              <div className="flex rounded-xl overflow-hidden shadow-lg relative">
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
@@ -180,6 +236,21 @@ function ChatUI({
                   rows="2"
                   style={{ minHeight: 48 }}
                 />
+                {/* Emoji Picker Toggle Button */}
+                <button
+                  type="button"
+                  className="px-3 flex items-center justify-center bg-transparent hover:bg-gray-700"
+                  onClick={() => setShowEmojiPicker((v) => !v)}
+                  tabIndex={-1}
+                  title="Add emoji"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="#fbbf24" />
+                    <circle cx="9" cy="10" r="1" fill="#fff" />
+                    <circle cx="15" cy="10" r="1" fill="#fff" />
+                    <path d="M8 15c1.333 1 2.667 1 4 0" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </button>
                 <button
                   type="submit"
                   className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white px-6 text-lg font-bold transition duration-200 flex items-center justify-center"
@@ -190,8 +261,19 @@ function ChatUI({
                     <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                   </svg>
                 </button>
+                {/* Emoji Picker Dropdown */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-16 left-0 z-50">
+                    <Picker data={data} onEmojiSelect={addEmoji} theme="dark" />
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-gray-400 mt-2">Press <span className="font-semibold">Enter</span> to send, <span className="font-semibold">Shift+Enter</span> for new line</p>
+              <p className="text-xs text-gray-400 mt-2">
+                Chatting with: <span className="font-semibold">{selectedUser === 'All' ? 'Group Chat' : selectedUser}</span>
+              </p>
+              <p className="text-xs text-gray-400">
+                Press <span className="font-semibold">Enter</span> to send, <span className="font-semibold">Shift+Enter</span> for new line
+              </p>
             </form>
           </div>
         </div>

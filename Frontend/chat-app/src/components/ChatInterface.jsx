@@ -25,32 +25,33 @@ function ChatInterface() {
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isConnected, setIsConnected] = useState(socket.connected);
+  const [onlineUserCount, setOnlineUserCount] = useState(0);
 
-  // Socket event listeners
+
+  // Only ONE useEffect for receiving messages
   useEffect(() => {
-    // Listen for incoming messages from the server
-    socket.on('receive-message', (msg) => {
-      setChat((prev) => [...prev, { ...msg, time: new Date() }]);
-    });
+    const handleReceiveMessage = (data) => {
+      setChat((prev) => [...prev, data]);
+    };
+    socket.on('receive-message', handleReceiveMessage);
 
-    socket.on('connect', () => {
-      setIsConnected(true);
-    });
-
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-    });
-
+    socket.on('connect', () => setIsConnected(true));
+    socket.on('disconnect', () => setIsConnected(false));
     socket.on('online-users', (users) => {
       setOnlineUsers(users);
+      setOnlineUserCount(users.length);
+    });
+    socket.on('online-users-data', (data) => {
+      setOnlineUsers(data.users);
+      setOnlineUserCount(data.count);
     });
 
-    // Cleanup function to remove event listeners
     return () => {
-      socket.off('receive-message');
+      socket.off('receive-message', handleReceiveMessage);
       socket.off('connect');
       socket.off('disconnect');
       socket.off('online-users');
+      socket.off('online-users-data');
     };
   }, []);
 
@@ -67,17 +68,15 @@ function ChatInterface() {
     }
   };
 
-  const sendMessage = (e) => {
-    e?.preventDefault();
-    if (message.trim() && isUsernameSet) {
+  const sendMessage = (msg, recipient = 'All') => {
+    if (msg.trim() && isUsernameSet) {
       const msgObj = {
-        message,
+        message: msg,
         sender: username,
+        recipient, // support for private chat
         time: new Date()
       };
       socket.emit('send-message', msgObj);
-      setChat((prev) => [...prev, msgObj]);
-      setMessage('');
     }
   };
 
@@ -87,6 +86,7 @@ function ChatInterface() {
       sendMessage();
     }
   };
+
 
   // Enhanced Username form component
   const UsernameForm = (
@@ -129,6 +129,7 @@ function ChatInterface() {
           type="submit"
           className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl text-lg font-semibold shadow-md transition duration-200 w-full"
           disabled={!username.trim()}
+          onClick={handleUsernameSubmit}
         >
           Join Chat
         </button>
@@ -173,6 +174,7 @@ function ChatInterface() {
           sendMessage={sendMessage}
           username={username}
           onlineUsers={onlineUsers}
+          onlineUserCount={onlineUserCount}
           isConnected={isConnected}
           handleKeyPress={handleKeyPress}
         />
