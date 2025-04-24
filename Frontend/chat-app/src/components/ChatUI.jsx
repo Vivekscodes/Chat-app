@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import PropTypes from 'prop-types';
@@ -50,11 +49,12 @@ function ChatUI({
   useEffect(() => {
     scrollToBottom();
   }, [chat, selectedUser]);
-  
+
   // Insert emoji at cursor position
   const addEmoji = (emoji) => {
     setMessage((prev) => prev + emoji.native);
-    setShowEmojiPicker(false);
+    // Optionally keep the picker open or close it:
+    // setShowEmojiPicker(false);
   };
 
   // Filter messages for current chat context
@@ -77,6 +77,7 @@ function ChatUI({
     if (!message.trim()) return;
     sendMessage(message, selectedUser); // Pass recipient
     setMessage('');
+    setShowEmojiPicker(false); // Close picker on send
   };
 
   return (
@@ -224,36 +225,38 @@ function ChatUI({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-blue-800 bg-gray-900 bg-opacity-80">
-              <div className="flex rounded-xl overflow-hidden shadow-lg relative">
+            {/* Message Input Area */}
+            <div className="p-4 border-t border-blue-800 bg-gray-900 bg-opacity-80 relative">
+              {/* Emoji Picker Dropdown */}
+              {showEmojiPicker && (
+                <div className="absolute bottom-full left-4 mb-2 z-50"> {/* Adjusted position */}
+                  <Picker data={data} onEmojiSelect={addEmoji} theme="dark" />
+                </div>
+              )}
+              <form onSubmit={handleSendMessage} className="flex rounded-xl overflow-hidden shadow-lg bg-gray-800">
+                {/* Emoji Picker Toggle Button */}
+                <button
+                  type="button" // Important: prevent form submission
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-3 text-gray-400 hover:text-yellow-400 focus:outline-none"
+                  title="Add Emoji"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder="Type your message..."
-                  className="flex-1 px-4 py-3 bg-gray-800 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-base"
+                  className="flex-1 px-4 py-3 bg-gray-800 text-white border-none focus:outline-none focus:ring-0 resize-none text-base" // Removed focus ring for cleaner look with button
                   rows="2"
                   style={{ minHeight: 48 }}
                 />
-                {/* Emoji Picker Toggle Button */}
-                <button
-                  type="button"
-                  className="px-3 flex items-center justify-center bg-transparent hover:bg-gray-700"
-                  onClick={() => setShowEmojiPicker((v) => !v)}
-                  tabIndex={-1}
-                  title="Add emoji"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="#fbbf24" />
-                    <circle cx="9" cy="10" r="1" fill="#fff" />
-                    <circle cx="15" cy="10" r="1" fill="#fff" />
-                    <path d="M8 15c1.333 1 2.667 1 4 0" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </button>
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white px-6 text-lg font-bold transition duration-200 flex items-center justify-center"
+                  className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white px-6 text-lg font-bold transition duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={!message.trim()}
                   title="Send"
                 >
@@ -261,20 +264,14 @@ function ChatUI({
                     <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                   </svg>
                 </button>
-                {/* Emoji Picker Dropdown */}
-                {showEmojiPicker && (
-                  <div className="absolute bottom-16 left-0 z-50">
-                    <Picker data={data} onEmojiSelect={addEmoji} theme="dark" />
-                  </div>
-                )}
-              </div>
+              </form>
               <p className="text-xs text-gray-400 mt-2">
                 Chatting with: <span className="font-semibold">{selectedUser === 'All' ? 'Group Chat' : selectedUser}</span>
               </p>
               <p className="text-xs text-gray-400">
                 Press <span className="font-semibold">Enter</span> to send, <span className="font-semibold">Shift+Enter</span> for new line
               </p>
-            </form>
+            </div>
           </div>
         </div>
       </div>
