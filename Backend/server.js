@@ -32,8 +32,7 @@ const userNames = {}; // { socket.id: username }
 
 io.on('connection', (socket) => {
     connectedUsers++;
-    // Set default username to 'user'
-    userNames[socket.id] = "user";
+    // Set default username to 'user
     console.log('User connected:', socket.id, 'Total:', connectedUsers);
 
     // Broadcast the updated user list (with default name)
@@ -42,7 +41,6 @@ io.on('connection', (socket) => {
         users: Object.values(userNames),
         count: Object.values(userNames).length
     });
-    userNames[socket.id] = "user";
     io.emit('online-users', Object.values(userNames));
 
     // Listen for the user-joined event
@@ -50,6 +48,11 @@ io.on('connection', (socket) => {
         userNames[socket.id] = username;
         io.emit('online-users', Object.values(userNames));
     });
+    socket.on("login", (email) => {
+        loggedInUsers.add(email);
+        socket.email = email;
+    })
+
 
 
     // Listen for the client to send their username
@@ -65,7 +68,7 @@ io.on('connection', (socket) => {
             io.emit('receive-message', msg); // Group chat
         } else {
             // Private chat: send to recipient and sender only
-            
+
             // Helper: find socket.id by username
             const getSocketIdByUsername = (username) => {
                 return Object.keys(userNames).find(
@@ -75,7 +78,7 @@ io.on('connection', (socket) => {
 
             const recipientSocketId = getSocketIdByUsername(msg.recipient);
             const senderSocketId = getSocketIdByUsername(msg.sender);
-            
+
             if (recipientSocketId) {
                 io.to(recipientSocketId).emit('receive-message', msg);
             }
